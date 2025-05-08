@@ -1,73 +1,97 @@
-#include<bits/stdc++.h>
+#include <iostream>
+#include <vector>
+#include <algorithm>
+
 using namespace std;
 
-class DSU{
-public :
-    vector<int> parent,size;
-    DSU(int n){
-        parent.resize(n+1);
-        size.resize(n+1,1);
-
-        for(int i=0;i<n;i++){
-            parent[i] = i;
-        }
-    }
-
-    int findUPar(int node){
-        if(node == parent[node]) return node;
-
-        return parent[node] = findUPar(parent[node]);
-    }
-
-    void unionbysize(int u, int v){
-        int up = findUPar(u);
-        int vp = findUPar(v);
-
-        if(up == vp) return ;
-
-        if(size[up] > size[vp]){
-            parent[vp] = up;
-            size[up] += size[vp];
-        }else{
-            parent[up] = parent[vp];
-            size[vp] += size[up];
-        }
-    }
+// Structure to represent an edge in the graph
+struct Edge {
+  int src, dest, weight;
 };
 
-
-void kruskal(vector<pair<int,pair<int,int>>> edges, int n){
-    sort(edges.begin(),edges.end());
-    int maxWt = 0;
-
-    DSU ds(n);
-    for(auto it : edges){
-        int wt = it.first;
-        int u = it.second.first;
-        int v = it.second.second;
-
-        if(ds.findUPar(u) != ds.findUPar(v)){
-            maxWt += wt;
-            ds.unionbysize(u,v);
-        }
-    }
-
-    cout << "Total weight " << maxWt << endl;
+// Function to compare two edges based on their weights
+bool compareEdges(const Edge& e1, const Edge& e2) {
+  return e1.weight < e2.weight;
 }
 
-int main(){
-    int n = 6;
-    vector<pair<int, pair<int, int>>> edges;
+// Function to find the parent node of a vertex in the disjoint-set data structure
+int findParent(vector<int>& parent, int u) {
+  if (parent[u] != u) {
+    parent[u] = findParent(parent, parent[u]);
+  }
+  return parent[u];
+}
 
-    // edges: {weight, {u, v}}
-    edges.push_back({4, {1, 2}});
-    edges.push_back({4, {1, 3}});
-    edges.push_back({2, {2, 3}});
-    edges.push_back({5, {2, 4}});
-    edges.push_back({5, {3, 4}});
-    edges.push_back({1, {4, 5}});
-    edges.push_back({3, {5, 6}});
-    edges.push_back({7, {4, 6}});
+// Function to perform union operation on two disjoint sets
+void unionSets(vector<int>& parent, vector<int>& rank, int x, int y) {
+  int xroot = findParent(parent, x);
+  int yroot = findParent(parent, y);
 
-    kruskal(edges,n);
+  // Attach the smaller tree under the root of the larger tree
+  if (rank[xroot] < rank[yroot]) {
+    parent[xroot] = yroot;
+  } else if (rank[xroot] > rank[yroot]) {
+    parent[yroot] = xroot;
+  } else {
+    // If ranks are same, then increment rank of one root
+    parent[yroot] = xroot;
+    rank[xroot]++;
+  }
+}
+
+// Function to construct and return the minimum spanning tree using Kruskal's algorithm
+vector<Edge> KruskalsMST(vector<Edge>& edges, int V) {
+  vector<Edge> result; // Stores edges in the MST
+  vector<int> parent(V); // Stores parent of each vertex
+  vector<int> rank(V, 0); // Stores rank of each vertex for efficient union-find
+
+  // Sort edges in non-decreasing order of their weight
+  sort(edges.begin(), edges.end(), compareEdges);
+
+  // Initialize all vertices as single-vertex sets
+  for (int i = 0; i < V; i++) {
+    parent[i] = i;
+  }
+
+  int i = 0; // Index used to pick next edge
+  for (const Edge& edge : edges) {
+    // Pick next edge from the sorted list
+    Edge next_edge = edges[i++];
+
+    // Check if the selected edge forms a cycle
+    int x = findParent(parent, next_edge.src);
+    int y = findParent(parent, next_edge.dest);
+
+    if (x != y) {
+      // Add the edge to the result as it doesn't form a cycle
+      result.push_back(next_edge);
+      // Perform union operation to merge sets
+      unionSets(parent, rank, x, y);
+    }
+  }
+
+  return result;
+}
+
+int main() {
+  // Sample graph edges
+  vector<Edge> edges = {
+    {0, 1, 4}, {0, 2, 3}, {1, 2, 1}, {1, 3, 2}, {2, 3, 4}, {4, 5, 3}, {5, 6, 1}
+  };
+  int V = 7; // Number of vertices in the graph
+
+  // Find MST using Kruskal's algorithm
+  vector<Edge> mst = KruskalsMST(edges, V);
+
+  cout << "Edges in the constructed MST: \n";
+  for (const Edge& edge : mst)
+ {
+    cout << edge.src << " -- " << edge.dest << " == " << edge.weight << endl;
+  }
+
+  if (mst.size() < V - 1) {
+    cout << "\nNote: The graph is disconnected. Forest generated instead of a single MST.\n";
+}
+
+  return 0;
 }
